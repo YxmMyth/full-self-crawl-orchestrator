@@ -43,7 +43,8 @@ class SiteDiscoveryConfig:
 @dataclass
 class SchedulerConfig:
     """[调度器配置]"""
-    mode: str = "serial"
+    mode: str = "serial"  # "serial" 或 "concurrent"
+    max_concurrency: int = 3  # 并发模式下的最大并发数
     agent_timeout_min: int = 30
     max_retries: int = 2
     retry_delay_sec: int = 5

@@ -30,7 +30,10 @@ orchestrator:
 
   # 调度器配置 (管理层)
   scheduler:
+    # 调度模式: serial (串行) 或 concurrent (并发)
     mode: "serial"
+    # 并发模式下的最大并发数 (仅当 mode=concurrent 时生效)
+    max_concurrency: 3
     agent_timeout_min: 30
     max_retries: 2
     retry_delay_sec: 5

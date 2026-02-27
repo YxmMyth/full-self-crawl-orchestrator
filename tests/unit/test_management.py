@@ -1,5 +1,11 @@
 """单元测试 - 管理层模块"""
 
+import sys
+from pathlib import Path
+
+# 添加项目路径
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
 import pytest
 import asyncio
 from orchestrator.management.state_manager import StateManager
@@ -8,6 +14,7 @@ from orchestrator.management.agent_runner import AgentRunner
 from orchestrator.models import (
     CandidateSite,
     RefinedRequirement,
+    TaskParams,
     TaskResult,
     ProgressUpdate,
 )

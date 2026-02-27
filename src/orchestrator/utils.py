@@ -13,9 +13,14 @@ from tenacity import (
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
+    before_sleep_log,
 )
+import logging
 
 T = TypeVar("T")
+
+# [配置日志]
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
@@ -32,6 +37,27 @@ class LLMClient:
         self.base_url = base_url or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
         self.client = httpx.AsyncClient(timeout=60.0)
 
+    @retry(
+        retry=retry_if_exception_type((httpx.HTTPError, httpx.ConnectError, httpx.TimeoutException)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    @retry(
+        retry=retry_if_exception_type((httpx.HTTPError, httpx.ConnectError, httpx.TimeoutException)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    @retry(
+        retry=retry_if_exception_type((httpx.HTTPError, httpx.ConnectError, httpx.TimeoutException)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     async def complete(
         self,
         system: str,
@@ -40,7 +66,7 @@ class LLMClient:
         max_tokens: int = 4096
     ) -> str:
         """
-        [调用] DeepSeek API [完成对话]
+        [调用] DeepSeek API [完成对话] - [带自动重试机制]
 
         Args:
             system: [系统提示词]
@@ -50,6 +76,12 @@ class LLMClient:
 
         Returns:
             str: LLM [生成的响应文本]
+
+        Raises:
+            ValueError: API key [未配置]
+            RuntimeError: API [调用失败（重试后仍然失败）]
+            httpx.ConnectError: [连接错误]
+            httpx.TimeoutException: [超时错误]
         """
         if not self.api_key:
             raise ValueError("DeepSeek API key not configured. Set DEEPSEEK_API_KEY environment variable.")
@@ -81,9 +113,20 @@ class LLMClient:
             data = response.json()
             return data["choices"][0]["message"]["content"]
 
+        except httpx.ConnectError as e:
+            logger.error(f"[连接到] DeepSeek API [失败]: {e}")
+            raise httpx.ConnectError(f"[无法连接到] DeepSeek API: {e}")
+        except httpx.TimeoutException as e:
+            logger.error(f"[调用] DeepSeek API [超时]: {e}")
+            raise httpx.TimeoutException(f"[调用] DeepSeek API [超时]: {e}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"[DeepSeek API HTTP [错误]: {e.response.status_code} - {e.response.text}")
+            raise RuntimeError(f"DeepSeek API error {e.response.status_code}: {e.response.text}")
         except httpx.HTTPError as e:
-            raise RuntimeError(f"DeepSeek API error: {e}")
+            logger.error(f"[DeepSeek API [请求失败]: {e}")
+            raise RuntimeError(f"DeepSeek API request failed: {e}")
         except (KeyError, IndexError) as e:
+            logger.error(f"[解析] DeepSeek [响应失败]: {e}")
             raise RuntimeError(f"Failed to parse DeepSeek response: {e}")
 
     async def close(self):

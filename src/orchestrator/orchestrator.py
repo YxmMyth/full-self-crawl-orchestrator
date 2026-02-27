@@ -9,13 +9,12 @@ from .execution.chatbox import Chatbox
 from .execution.presenter import ResultPresenter
 from .management.agent_runner import AgentRunner
 from .management.monitor import Monitor
-from .management.scheduler import SerialScheduler
+from .management.scheduler import ConcurrentScheduler, SerialScheduler
 from .management.state_manager import StateManager
 from .models import CandidateSite, ProgressUpdate, RefinedRequirement, ResearchResult, TaskResult
 from .strategic.requirement_analyzer import RequirementAnalyzer
 from .strategic.result_aggregator import ResultAggregator
-from .strategic.site_discovery import SiteDiscovery
-from .utils import generate_task_id
+from .storage.postgres_store import PostgresStore
 
 
 class Orchestrator:
@@ -49,16 +48,42 @@ class Orchestrator:
             agent_path=self.config.agent.path,
             use_subprocess=True
         )
-        self.scheduler = SerialScheduler(
-            agent_runner=self.agent_runner,
-            state_manager=self.state_manager,
-            monitor=self.monitor,
-            agent_timeout=self.config.scheduler.agent_timeout_min * 60
-        )
+
+        # [根据配置选择调度器模式]
+        if self.config.scheduler.mode == "concurrent":
+            self.scheduler = ConcurrentScheduler(
+                agent_runner=self.agent_runner,
+                state_manager=self.state_manager,
+                monitor=self.monitor,
+                agent_timeout=self.config.scheduler.agent_timeout_min * 60,
+                max_concurrency=self.config.scheduler.max_concurrency
+            )
+            print(f"[INFO] [使用并发调度器], [最大并发数]: {self.config.scheduler.max_concurrency}")
+        else:
+            self.scheduler = SerialScheduler(
+                agent_runner=self.agent_runner,
+                state_manager=self.state_manager,
+                monitor=self.monitor,
+                agent_timeout=self.config.scheduler.agent_timeout_min * 60
+            )
+            print("[INFO] [使用串行调度器]")
 
         # [执行层组件]
         self.chatbox = Chatbox(self.config)
         self.presenter = ResultPresenter()
+
+        # [PostgreSQL 存储]
+        self.postgres_store: Optional[PostgresStore] = None
+        try:
+            self.postgres_store = PostgresStore(
+                host=self.config.storage.postgres.host,
+                port=self.config.storage.postgres.port,
+                database=self.config.storage.postgres.database,
+                user=self.config.storage.postgres.user,
+                password=self.config.storage.postgres.password
+            )
+        except Exception as e:
+            print(f"[WARN] PostgreSQL [初始化失败]: {e}")
 
         # [状态]
         self.current_task_id: Optional[str] = None
@@ -104,6 +129,21 @@ class Orchestrator:
         await self.state_manager.create_task(task_id, user_input, requirement)
         await self.state_manager.set_task_status(task_id, "running")
 
+        # [持久化到 PostgreSQL]
+        if self.postgres_store:
+            try:
+                await self.postgres_store.create_task(
+                    task_id=task_id,
+                    user_query=user_input,
+                    refined_requirement=requirement.model_dump()
+                )
+                await self.postgres_store.update_task_status(
+                    task_id=task_id,
+                    status="running"
+                )
+            except Exception as e:
+                print(f"[WARN] [保存任务到] PostgreSQL [失败]: {e}")
+
         # 3. [候选站挖掘（战略层）]
         print("[STAGE 2/4] [候选站挖掘]...")
         candidate_sites = await self.site_discovery.discover(requirement)
@@ -138,6 +178,25 @@ class Orchestrator:
 
         # [更新任务状态]
         await self.state_manager.set_task_status(task_id, "completed")
+
+        # [持久化任务结果到 PostgreSQL]
+        if self.postgres_store:
+            try:
+                await self.postgres_store.update_task_status(
+                    task_id=task_id,
+                    status="completed",
+                    candidate_sites=[site.model_dump() for site in candidate_sites],
+                    successful_sites=research_result.successful_sites
+                )
+
+                # [保存站点结果]
+                for result in results:
+                    if result.status == "success":
+                        await self.postgres_store.save_site_result(
+                            result.model_dump()
+                        )
+            except Exception as e:
+                print(f"[WARN] [保存任务结果到] PostgreSQL [失败]: {e}")
 
         # [取消注册回调]
         if progress_callback:
@@ -244,6 +303,11 @@ class Orchestrator:
         Returns:
             List[dict]: [任务列表]
         """
-        # [这里可以实现从] PostgreSQL [查询历史任务]
-        # [暂时返回空列表]
+        if self.postgres_store:
+            try:
+                tasks = await self.postgres_store.list_tasks(limit=limit)
+                return tasks
+            except Exception as e:
+                print(f"[WARN] [查询历史任务失败]: {e}")
+
         return []
