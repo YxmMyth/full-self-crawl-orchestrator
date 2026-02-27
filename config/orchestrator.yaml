@@ -1,0 +1,80 @@
+# 数据源调研平台 - Orchestrator 配置
+
+orchestrator:
+  # 应用配置
+  app:
+    name: "数据源调研平台"
+    version: "3.0.0"
+    debug: false
+
+  # LLM 配置
+  llm:
+    model: "GLM-4.7"
+    api_key: "${LLM_API_KEY}"
+    base_url: "${LLM_BASE_URL}"
+    temperature: 0.7
+    max_tokens: 4096
+    timeout: 60
+
+  # 需求分析配置 (战略层)
+  requirement:
+    max_clarify_rounds: 3
+    default_quantity: 1000
+    default_time_range: "近一年"
+
+  # 候选站挖掘配置 (战略层)
+  site_discovery:
+    min_sites: 10
+    max_sites: 30
+    priority_threshold: 5
+
+  # 调度器配置 (管理层)
+  scheduler:
+    mode: "serial"
+    agent_timeout_min: 30
+    max_retries: 2
+    retry_delay_sec: 5
+
+  # Agent 配置
+  agent:
+    path: "../full-self-crawl-agent"
+    module: "full_self_crawl_agent"
+    python_executable: "python"
+
+  # 监控配置 (管理层)
+  monitor:
+    progress_update_interval: 5
+    enable_realtime_push: true
+    log_level: "INFO"
+
+  # 存储配置
+  storage:
+    # Redis 配置
+    redis:
+      host: "${REDIS_HOST:localhost}"
+      port: "${REDIS_PORT:6379}"
+      db: "${REDIS_DB:0}"
+      password: "${REDIS_PASSWORD:}"
+      ssl: false
+      socket_timeout: 30
+      socket_connect_timeout: 5
+
+    # PostgreSQL 配置
+    postgres:
+      host: "${POSTGRES_HOST:localhost}"
+      port: "${POSTGRES_PORT:5432}"
+      database: "${POSTGRES_DB:crawler}"
+      user: "${POSTGRES_USER:crawler}"
+      password: "${POSTGRES_PASSWORD:crawler}"
+      min_pool_size: 5
+      max_pool_size: 20
+      command_timeout: 60
+
+  # 日志配置
+  logging:
+    level: "INFO"
+    format: "json"
+    output: "stdout"
+    file_path: "logs/orchestrator.log"
+    rotation: "1 day"
+    retention: "30 days"
