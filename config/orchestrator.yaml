@@ -41,6 +41,11 @@ orchestrator:
   # Agent 配置
   agent:
     path: "../full-self-crawl-agent"
+    mode: "subprocess"
+    image: "full-self-crawl-agent:latest"
+    memory_limit: "2g"
+    cpu_limit: 2.0
+    timeout_sec: 1800
     module: "full_self_crawl_agent"
     python_executable: "python"
 

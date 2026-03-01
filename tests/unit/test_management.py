@@ -152,7 +152,7 @@ class TestAgentRunner:
 
     @pytest.fixture
     def agent_runner(self):
-        return AgentRunner(use_subprocess=True)
+        return AgentRunner(mode='mock')
 
     @pytest.fixture
     def sample_task_params(self):

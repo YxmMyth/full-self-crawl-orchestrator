@@ -104,6 +104,10 @@ class AgentConfig:
     module: str = "full_self_crawl_agent"
     timeout_sec: int = 1800
     python_executable: str = "python"
+    mode: str = "subprocess"  # "docker" | "subprocess" | "mock"
+    image: str = "full-self-crawl-agent:latest"
+    memory_limit: str = "2g"
+    cpu_limit: float = 2.0
 
 
 @dataclass
