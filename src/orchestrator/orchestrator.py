@@ -46,7 +46,11 @@ class Orchestrator:
         self.monitor = Monitor(update_interval=self.config.monitor.progress_update_interval)
         self.agent_runner = AgentRunner(
             agent_path=self.config.agent.path,
-            use_subprocess=True
+            mode=self.config.agent.mode,
+            agent_image=self.config.agent.image,
+            redis_url=self.config.storage.redis.url,
+            agent_memory_limit=self.config.agent.memory_limit,
+            agent_cpu_limit=self.config.agent.cpu_limit,
         )
 
         # [根据配置选择调度器模式]
