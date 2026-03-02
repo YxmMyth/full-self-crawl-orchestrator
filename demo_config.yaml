@@ -1,0 +1,40 @@
+# 示例配置文件，用于演示访问codepen.io
+config_version: "1.0"
+
+llm:
+  provider: "openai"  # 或者 "anthropic"
+  model: "gpt-4-turbo"  # 或者 claude-3-5-sonnet 等
+  api_key: "${OPENAI_API_KEY}"  # 使用环境变量
+  temperature: 0.3
+
+requirement_analyzer:
+  max_iterations: 3
+
+site_discovery:
+  min_sites: 1  # 减少候选站点数量，快速演示
+  max_sites: 3  # 只选择1-3个站点进行演示
+
+scheduler:
+  mode: "serial"  # 串行模式，简化流程
+  agent_timeout_min: 10  # 设置代理超时时间为10分钟
+  max_concurrency: 1  # 并发数设为1
+
+monitor:
+  progress_update_interval: 5  # 每5秒更新一次进度
+
+agent:
+  path: "../full-self-crawl-agent/src/main.py"  # 假设agent代码在此路径
+  mode: "subprocess"  # 使用子进程模式运行agent
+  image: "crawl-agent:latest"  # Docker镜像名称
+  memory_limit: "2g"  # 内存限制
+  cpu_limit: "1.0"  # CPU限制
+
+storage:
+  redis:
+    url: "redis://localhost:6379/0"
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "orchestrator_db"
+    user: "postgres"
+    password: "${POSTGRES_PASSWORD}"

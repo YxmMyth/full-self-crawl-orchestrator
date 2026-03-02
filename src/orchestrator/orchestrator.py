@@ -14,7 +14,9 @@ from .management.state_manager import StateManager
 from .models import CandidateSite, ProgressUpdate, RefinedRequirement, ResearchResult, TaskResult
 from .strategic.requirement_analyzer import RequirementAnalyzer
 from .strategic.result_aggregator import ResultAggregator
+from .strategic.site_discovery import SiteDiscovery
 from .storage.postgres_store import PostgresStore
+from .utils import generate_task_id
 
 
 class Orchestrator:

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(python:*)",
+      "Bash(docker:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
